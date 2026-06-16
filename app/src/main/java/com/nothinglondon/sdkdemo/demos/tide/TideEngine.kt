@@ -12,9 +12,10 @@ object TideEngine {
 
     private const val M2_PERIOD_MILLIS = 44712_000L // 12.4206 h
 
-    // Placeholder reference high-tide instant. Replace with a real high-tide
-    // epoch for the user's station (Rockaway Inlet / Sandy Hook) to calibrate.
-    private const val REFERENCE_HIGH_TIDE_UTC_MILLIS = 0L
+    // Calibrated to NYC Harbor high tide 2026-06-15 21:14 EDT (01:14 UTC 06-16).
+    // M2-only model drifts slowly and ignores spring/neap amplitude; good enough
+    // for a glyph toy, recalibrate or wire NOAA per-station for true precision.
+    private const val REFERENCE_HIGH_TIDE_UTC_MILLIS = 1781572440000L
 
     // Returns tide level in 0f..1f. 1f = high tide, 0f = low tide.
     fun level(epochMillis: Long, amplitude: Float = 1f): Float {
@@ -39,8 +40,8 @@ object TideEngine {
                 val i = y * n + x
                 out[i] = when {
                     y >= fillTopY -> 255
-                    abs(y - fillTopY) < 0.6 -> 160
-                    dist2 >= rimInner * rimInner -> 42
+                    abs(y - fillTopY) < 0.6 -> 180
+                    dist2 >= rimInner * rimInner -> 90
                     else -> 0
                 }
             }
