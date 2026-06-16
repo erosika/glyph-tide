@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>tide toy · 13×13 preview</title>
+<style>
+  :root{
+    --bg:#0b0e14; --fg:#c9d1d9; --fg-dim:#5b6470; --accent:#7eb8f6;
+    --cyan:#56d4dd; --led-off:#13171f; --rim:#2a3a4a; --border:#1c2230;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:ui-monospace,Menlo,monospace;
+    display:flex; min-height:100vh; align-items:center; justify-content:center;
+    gap:3rem; flex-wrap:wrap; padding:2rem;
+  }
+  .panel{display:flex; flex-direction:column; gap:1rem; align-items:center}
+  #matrix{
+    display:grid; grid-template-columns:repeat(13,14px); grid-template-rows:repeat(13,14px);
+    gap:3px; padding:1.25rem; background:#06080c; border:1px solid var(--border);
+  }
+  .led{width:14px;height:14px;border-radius:50%;background:var(--led-off)}
+  .meta{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim)}
+  .readout{font-size:.85rem;color:var(--fg)}
+  .readout b{color:var(--cyan);font-weight:400}
+  h1{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 .25rem}
+  label{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim);display:flex;flex-direction:column;gap:.4rem}
+  input[type=range]{width:240px;accent-color:var(--accent)}
+  .controls{display:flex;flex-direction:column;gap:1rem;border-left:1px solid var(--border);padding-left:1.5rem}
+  button{background:transparent;border:1px solid var(--border);color:var(--fg);font-family:inherit;
+    font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem .9rem;cursor:pointer}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="meta">nothing 4a pro · glyph matrix · 13×13</div>
+    <div id="matrix"></div>
+    <div class="readout">t+<b id="clock">00:00</b> · level <b id="lvl">0%</b> · <b id="state">—</b></div>
+  </div>
+  <div class="controls">
+    <h1>tide toy — preview</h1>
+    <label>hour of lunar day (0–12.42h)
+      <input id="t" type="range" min="0" max="745" value="0"/>
+    </label>
+    <label>spring↔neap (lunar phase)
+      <input id="amp" type="range" min="35" max="100" value="100"/>
+    </label>
+    <button id="play">▶ play (slow)</button>
+    <div class="meta" style="max-width:240px;line-height:1.6">
+      bright = water · dim ring = moon limb (always on, never blank).
+      crest line marks the waterline. semidiurnal sine, 12h25m period.
+      identical math ships in TideToyService.kt.
+    </div>
+  </div>
+<script>
+const N=13, R=6.2, CX=6, CY=6, T_MIN=745; // 12.42h in minutes
+const grid=document.getElementById('matrix');
+const leds=[];
+for(let i=0;i<N*N;i++){const d=document.createElement('div');d.className='led';grid.appendChild(d);leds.push(d);}
+
+// shared render: returns IntArray-equivalent brightness 0..255 for 13x13, row-major
+function renderTide(levelFrac){
+  const out=new Array(N*N).fill(0);
+  const fillTopY = (N-1) - levelFrac*(N-1); // water fills from bottom up
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      const dx=x-CX, dy=y-CY, inside = dx*dx+dy*dy <= R*R;
+      if(!inside) continue;
+      const i=y*N+x;
+      const onRim = dx*dx+dy*dy >= (R-1.0)*(R-1.0); // limb ring
+      if(y>=fillTopY) out[i]=255;                     // water
+      else if(Math.abs(y-fillTopY)<0.6) out[i]=160;   // crest line
+      else if(onRim) out[i]=42;                        // always-on moon limb
+    }
+  }
+  return out;
+}
+
+function draw(level){
+  const f=renderTide(level);
+  for(let i=0;i<f.length;i++){
+    const v=f[i];
+    leds[i].style.background = v===0 ? 'var(--led-off)'
+      : `rgba(${126+(v/255)*40},${184+(v/255)*30},${230},${0.15+0.85*(v/255)})`;
+  }
+}
+
+const tEl=document.getElementById('t'), ampEl=document.getElementById('amp');
+function level(){
+  const phase = (tEl.value/T_MIN)*2*Math.PI;
+  const amp = ampEl.value/100;
+  return 0.5 + 0.5*amp*-Math.cos(phase); // low at t=0, high at half period
+}
+function tick(){
+  const lv=level();
+  draw(lv);
+  const mins=Math.round((tEl.value/T_MIN)*12.42*60);
+  document.getElementById('clock').textContent=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`;
+  document.getElementById('lvl').textContent=Math.round(lv*100)+'%';
+  const prev=level.__p??lv; level.__p=lv;
+  document.getElementById('state').textContent = lv>=prev?'flooding ▲':'ebbing ▼';
+}
+tEl.oninput=ampEl.oninput=tick;
+
+let playing=false,raf;
+document.getElementById('play').onclick=function(){
+  playing=!playing; this.textContent=playing?'⏸ pause':'▶ play (slow)';
+  const step=()=>{ if(!playing)return; let v=+tEl.value+1; if(v>T_MIN)v=0; tEl.value=v; tick(); raf=setTimeout(step,60); };
+  if(playing)step(); else clearTimeout(raf);
+};
+tick();
+</script>
+</body>
+</html>
