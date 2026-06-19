@@ -43,7 +43,7 @@ class TideToyService : GlyphMatrixService("Tide") {
     }
 
     private fun renderNow(gmm: GlyphMatrixManager) {
-        val frame = TideEngine.renderFrame(TideEngine.level(now()), matrixLength)
+        val frame = TideEngine.renderFrame(now(), matrixLength)
         scope.launch { withContext(Dispatchers.Main) { gmm.setMatrixFrame(frame) } }
     }
 

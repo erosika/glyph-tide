@@ -4,19 +4,21 @@ A Glyph Matrix toy for the **Nothing Phone (4a) Pro** (`DEVICE_25111p`). A risin
 waterline tracking the tide, rendered on the 13×13 matrix. Always-on capable, never blank,
 no flashing.
 
+<p align="center"><img src="docs/tide.svg" width="300" alt="Tide rendered on a 13×13 Glyph Matrix — water filling the disk with a drift highlight"/></p>
+
 ## What it does
 
 - Renders a circular **waterline** that rises (flooding) and falls (ebbing).
+- A soft highlight **drifts up** through the water when the tide is rising, **down** when ebbing — so direction reads at a glance.
 - A dim **limb ring** is always lit, so the disk is never blank — even at slack water.
-- Bright crest line marks the current water level.
-- Redraws on the once-per-minute AOD tick, plus a slow 1 s sweep while actively viewed.
+- Redraws on the once-per-minute AOD tick, plus a slow 1 s sweep while actively viewed (drift animates only while actively rendering).
 
 ## Status
 
-The tide **period** is real (principal lunar M2 = 12 h 25 m). Absolute phase and amplitude are
-nominal until calibrated to a NOAA tide station — see `REFERENCE_HIGH_TIDE_UTC_MILLIS` in
+The tide **period** is real (principal lunar M2 = 12 h 25 m), calibrated to a NYC Harbor high tide.
+The M2-only model drifts slowly and ignores spring/neap amplitude — recalibrate or wire NOAA per
+station for true precision. See `REFERENCE_HIGH_TIDE_UTC_MILLIS` in
 [`TideEngine.kt`](app/src/main/java/com/nothinglondon/sdkdemo/demos/tide/TideEngine.kt).
-Until then the motion is correct; the "is it high tide right now" reading is not yet exact.
 
 ## Install
 
