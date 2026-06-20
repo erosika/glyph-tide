@@ -1,6 +1,7 @@
 package com.nothinglondon.sdkdemo.demos.tide
 
 import android.content.Context
+import android.util.Log
 import com.nothing.ketchum.Common
 import com.nothing.ketchum.Glyph
 import com.nothing.ketchum.GlyphMatrixManager
@@ -43,7 +44,9 @@ class TideToyService : GlyphMatrixService("Tide") {
     }
 
     private fun renderNow(gmm: GlyphMatrixManager) {
-        val frame = TideEngine.renderFrame(now(), matrixLength)
+        val t = now()
+        Log.d("TideToy", "render level=${"%.2f".format(TideEngine.level(t))} rising=${TideEngine.isRising(t)} n=$matrixLength")
+        val frame = TideEngine.renderFrame(t, matrixLength)
         scope.launch { withContext(Dispatchers.Main) { gmm.setMatrixFrame(frame) } }
     }
 
@@ -51,6 +54,6 @@ class TideToyService : GlyphMatrixService("Tide") {
 
     private companion object {
         private const val FALLBACK_LENGTH = 13
-        private const val SWEEP_INTERVAL_MILLIS = 1000L
+        private const val SWEEP_INTERVAL_MILLIS = 500L
     }
 }

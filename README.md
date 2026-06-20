@@ -4,12 +4,12 @@ A Glyph Matrix toy for the **Nothing Phone (4a) Pro** (`DEVICE_25111p`). A risin
 waterline tracking the tide, rendered on the 13×13 matrix. Always-on capable, never blank,
 no flashing.
 
-<p align="center"><img src="docs/tide.svg" width="300" alt="Tide rendered on a 13×13 Glyph Matrix — water filling the disk with a drift highlight"/></p>
+<p align="center"><img src="docs/tide.svg" width="300" alt="Tide rendered on a 13×13 Glyph Matrix — dim water filled to the tide level with a soft bloom band gliding upward"/></p>
 
 ## What it does
 
-- Renders a circular **waterline** that rises (flooding) and falls (ebbing).
-- A soft highlight **drifts up** through the water when the tide is rising, **down** when ebbing — so direction reads at a glance.
+- Fills the disk to the **true tide level** (dim water) — height shows how high the tide is.
+- A soft **bloom band glides through the water in the tide's direction** — up toward the fill point while rising, down while ebbing — looping seamlessly (~6 s/pass, no strobe).
 - A dim **limb ring** is always lit, so the disk is never blank — even at slack water.
 - Redraws on the once-per-minute AOD tick, plus a slow 1 s sweep while actively viewed (drift animates only while actively rendering).
 

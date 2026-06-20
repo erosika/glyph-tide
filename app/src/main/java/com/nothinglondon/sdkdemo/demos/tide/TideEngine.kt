@@ -1,8 +1,8 @@
 package com.nothinglondon.sdkdemo.demos.tide
 
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 
 // Semidiurnal tide model. The PERIOD is real (principal lunar M2 = 12h25m);
@@ -18,9 +18,12 @@ object TideEngine {
     // for a glyph toy, recalibrate or wire NOAA per-station for true precision.
     private const val REFERENCE_HIGH_TIDE_UTC_MILLIS = 1781572440000L
 
-    private const val WATER_BASE = 205        // dimmed so the drift highlight has headroom
-    private const val HIGHLIGHT = 50          // gentle brightness bump, no strobe
-    private const val BAND_TRAVEL_MILLIS = 9000.0 // one drift pass through the water column
+    private const val WATER_BASE = 95     // dim fill, shows the true level
+    private const val CREST_EDGE = 140    // slight emphasis on the top water line
+    private const val RIM = 90            // always-on disk outline
+    private const val BLOOM_PEAK = 160.0  // brightness of the gliding bloom band
+    private const val BLOOM_SIGMA = 1.4   // band softness (px)
+    private const val CYCLE_MILLIS = 6000.0 // one bloom pass through the water
 
     // Returns tide level in 0f..1f. 1f = high tide, 0f = low tide.
     fun level(epochMillis: Long, amplitude: Float = 1f): Float {
@@ -34,9 +37,11 @@ object TideEngine {
         return sin(phase) < 0 // d/dt cos = -sin
     }
 
-    // Renders a circular waterline into a row-major IntArray of n*n brightness
-    // values (0..255). A soft highlight drifts up through the water when flooding,
-    // down when ebbing. Always draws a dim limb ring so the disk is never blank.
+    // Renders the tide into a row-major IntArray of n*n brightness values (0..255).
+    // The disk fills to the true level (dim water, so height = how high the tide is),
+    // and a soft bloom band glides through the water in the tide's direction — UP toward
+    // the fill point while rising, DOWN while ebbing — looping seamlessly. Slow + soft on
+    // purpose (~0.16 Hz, gaussian edges): legible motion, no strobe. Rim is always lit.
     fun renderFrame(epochMillis: Long, n: Int): IntArray {
         val out = IntArray(n * n)
         val center = (n - 1) / 2.0
@@ -44,12 +49,14 @@ object TideEngine {
         val rimInner = radius - 1.0
 
         val level = level(epochMillis)
-        val fillTopY = (n - 1) - level * (n - 1)
         val rising = isRising(epochMillis)
+        val crestRow = Math.round((n - 1) - level * (n - 1)).toInt().coerceIn(0, n - 1)
 
-        val span = (n - 1) - fillTopY
-        val phase = (epochMillis % BAND_TRAVEL_MILLIS.toLong()) / BAND_TRAVEL_MILLIS
-        val bandY = if (rising) (n - 1) - phase * span else fillTopY + phase * span
+        // Bloom band travels a touch beyond both ends so it fades out before wrapping.
+        val cyclePos = (epochMillis % CYCLE_MILLIS.toLong()) / CYCLE_MILLIS
+        val top = crestRow - 1.0
+        val bot = (n - 1) + 1.0
+        val bandY = if (rising) bot - cyclePos * (bot - top) else top + cyclePos * (bot - top)
 
         for (y in 0 until n) {
             for (x in 0 until n) {
@@ -58,14 +65,13 @@ object TideEngine {
                 val dist2 = dx * dx + dy * dy
                 if (dist2 > radius * radius) continue
                 val i = y * n + x
-                out[i] = when {
-                    y >= fillTopY -> {
-                        val falloff = (1.0 - abs(y - bandY) / 1.6).coerceAtLeast(0.0)
-                        (WATER_BASE + HIGHLIGHT * falloff).toInt().coerceAtMost(255)
-                    }
-                    abs(y - fillTopY) < 0.6 -> 180
-                    dist2 >= rimInner * rimInner -> 90
-                    else -> 0
+                if (y < crestRow) {
+                    out[i] = if (dist2 >= rimInner * rimInner) RIM else 0
+                } else {
+                    val base = if (y == crestRow) CREST_EDGE else WATER_BASE
+                    val d = y - bandY
+                    val bloom = BLOOM_PEAK * exp(-(d * d) / (2 * BLOOM_SIGMA * BLOOM_SIGMA))
+                    out[i] = (base + bloom).toInt().coerceAtMost(255)
                 }
             }
         }
